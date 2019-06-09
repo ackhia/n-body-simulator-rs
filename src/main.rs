@@ -12,14 +12,24 @@ pub struct Partical {
   mass: f64
 }
 
+impl PartialEq for Partical {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x &&
+        self.y == other.y && 
+        self.velocity_x == other.velocity_x &&
+        self.velocity_y == other.velocity_y &&
+        self.mass == other.mass
+    }
+}
+impl Eq for Partical {}
+
 pub struct App {
     gl: GlGraphics, // OpenGL drawing backend.
-    rotation: f64,   // Rotation for the square.
     particals: Vec<Partical>
 }
 
-fn same_object<T>(a: &T, b: &T) -> bool {
-    a as *const T == b as *const T
+fn distance(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+  (((x2 - x1).powf(2.0) + (y2 - y1).powf(2.0)) as f64).sqrt()
 }
 
 impl App {
@@ -42,32 +52,39 @@ impl App {
         }
     }
 
-    fn distance(&self, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
-      (((x1 - x2).powf(2.0) + (y1 - y2).powf(2.0)) as f64).sqrt()
-    }
-
     fn update(&mut self, args: &UpdateArgs) {
-        /*let mut a_x: f64;
-        let mut a_y: f64;
-        for mut sp in &mut self.particals {
-          a_x = 0.0;
-          a_y = 0.0;
-          for p in &self.particals {
-            if same_object(sp, p) == false {
-              a_x += p.mass * (sp.x - p.x) / self.distance(sp.x, p.x, sp.y, p.y);
-              a_y += p.mass * (sp.y - p.y) / self.distance(sp.x, p.x, sp.y, p.y);
-            }
+      let drag = 0.999;
+      let mut a_x: f64;
+      let mut a_y: f64;
+      let mut new_particals: Vec<Partical> = Vec::new();
+
+      for sp in self.particals.iter() {
+        a_x = 0.0;
+        a_y = 0.0;
+        for p in self.particals.iter() {
+          if sp != p {
+            a_x += p.mass * (p.x - sp.x) / distance(sp.x, sp.y, p.x, p.y);
+            a_y += p.mass * (p.y - sp.y) / distance(sp.x, sp.y, p.x, p.y);
           }
-          sp.x += a_x * args.dt;
-          sp.y += a_y * args.dt;
-        }*/
+        }
+        let v_x = (sp.velocity_x + (a_x * args.dt)) * drag;
+        let v_y = (sp.velocity_y + (a_y * args.dt)) * drag;
+        new_particals.push(Partical {
+          x: sp.x + v_x,
+          y: sp.y + v_y,
+          velocity_x: v_x,
+          velocity_y: v_y,
+          mass: sp.mass
+        })
+      }
+
+      self.particals = new_particals;
     }
 }
 
 fn build_app(gl: GlGraphics) -> App {
   let mut app = App {
     gl,
-    rotation: 0.0,
     particals: Vec::new()
   };
 
@@ -86,34 +103,44 @@ fn build_app(gl: GlGraphics) -> App {
     velocity_y: 0.0,
     mass: 4.0
   });
+
+  app.particals.push(Partical {
+    x: 740.0,
+    y: 11.0,
+    velocity_x: 0.0,
+    velocity_y: 0.0,
+    mass: 4.0
+  });
   app
 }
 
 fn main() {
-    // Change this to OpenGL::V2_1 if not working.
-    let opengl = OpenGL::V3_2;
+  println!("{}", distance(10.0, 10.0, 740.0, 10.0));
 
-    // Create an Glutin window.
-    let mut window: Window = WindowSettings::new(
-            "n-body-simulator-rs",
-            [800, 800]
-        )
-        .opengl(opengl)
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
+  // Change this to OpenGL::V2_1 if not working.
+  let opengl = OpenGL::V3_2;
 
-    // Create a new game and run it.
-    let mut app = build_app(GlGraphics::new(opengl));
+  // Create an Glutin window.
+  let mut window: Window = WindowSettings::new(
+          "n-body-simulator-rs",
+          [800, 800]
+      )
+      .opengl(opengl)
+      .exit_on_esc(true)
+      .build()
+      .unwrap();
 
-    let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
-        if let Some(r) = e.render_args() {
-            app.render(&r);
-        }
+  // Create a new game and run it.
+  let mut app = build_app(GlGraphics::new(opengl));
 
-        if let Some(u) = e.update_args() {
-            app.update(&u);
-        }
-    }
+  let mut events = Events::new(EventSettings::new());
+  while let Some(e) = events.next(&mut window) {
+      if let Some(r) = e.render_args() {
+          app.render(&r);
+      }
+
+      if let Some(u) = e.update_args() {
+          app.update(&u);
+      }
+  }
 }
