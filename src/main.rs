@@ -3,6 +3,14 @@ use piston::event_loop::*;
 use piston::input::*;
 use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{ GlGraphics, OpenGL };
+use rand::Rng;
+
+const MAX_MASS: f64 = 5.0;
+const MIN_MASS: f64 = 1.0;
+const PARTICLE_COUNT: i32 = 400;
+const TAIL_OFF: f64 = 1.8;
+const INITIAL_VOLICITY_MIN: f64 = -0.1;
+const INITIAL_VOLICITY_MAX: f64 = 0.1;
 
 pub struct Partical {
   x: f64,
@@ -36,18 +44,17 @@ impl App {
     fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
 
-        const GREEN: [f32; 4] = [0.0, 1.0, 0.0, 1.0];
-        const RED:   [f32; 4] = [1.0, 0.0, 0.0, 1.0];
+        const BLACK: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
+        const GREEN:   [f32; 4] = [0.0, 1.0, 0.0, 1.0];
 
-        let square = rectangle::square(0.0, 0.0, 50.0);
-        clear(GREEN, &mut self.gl);
+        clear(BLACK, &mut self.gl);
 
         for p in &self.particals {
           self.gl.draw(args.viewport(), |c, gl| {
               let transform = c.transform.trans(p.x, p.y);
-
-              // Draw a box rotating around the middle of the screen.
-              rectangle(RED, square, transform, gl);
+              let size = p.mass / MAX_MASS * 5.0;
+              let circle = ellipse::centered([0.0,0.0,size,size]);
+              ellipse(GREEN, circle, transform, gl);
           });
         }
     }
@@ -63,8 +70,9 @@ impl App {
         a_y = 0.0;
         for p in self.particals.iter() {
           if sp != p {
-            a_x += p.mass * (p.x - sp.x) / distance(sp.x, sp.y, p.x, p.y);
-            a_y += p.mass * (p.y - sp.y) / distance(sp.x, sp.y, p.x, p.y);
+            let distance = distance(sp.x, sp.y, p.x, p.y);
+            a_x += p.mass * (p.x - sp.x) / distance.powf(TAIL_OFF);
+            a_y += p.mass * (p.y - sp.y) / distance.powf(TAIL_OFF);
           }
         }
         let v_x = (sp.velocity_x + (a_x * args.dt)) * drag;
@@ -88,29 +96,18 @@ fn build_app(gl: GlGraphics) -> App {
     particals: Vec::new()
   };
 
-  app.particals.push(Partical {
-    x: 10.0,
-    y: 10.0,
-    velocity_x: 0.0,
-    velocity_y: 0.0,
-    mass: 4.0
-  });
+  let mut i = 0;
+  while i < PARTICLE_COUNT {
+    app.particals.push(Partical {
+      x: rand::thread_rng().gen_range(20.0, 780.0),
+      y: rand::thread_rng().gen_range(20.0, 780.0),
+      velocity_x: rand::thread_rng().gen_range(INITIAL_VOLICITY_MIN, INITIAL_VOLICITY_MAX),
+      velocity_y: rand::thread_rng().gen_range(INITIAL_VOLICITY_MIN, INITIAL_VOLICITY_MAX),
+      mass: rand::thread_rng().gen_range(MIN_MASS, MAX_MASS)
+    });
 
-  app.particals.push(Partical {
-    x: 740.0,
-    y: 740.0,
-    velocity_x: 0.0,
-    velocity_y: 0.0,
-    mass: 4.0
-  });
-
-  app.particals.push(Partical {
-    x: 740.0,
-    y: 11.0,
-    velocity_x: 0.0,
-    velocity_y: 0.0,
-    mass: 4.0
-  });
+    i += 1;
+  }
   app
 }
 
