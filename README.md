@@ -7,5 +7,3 @@ An n-body partical simulator written in Rust
 ### Run
 
 `cargo run`
-
-Very much work in progress
