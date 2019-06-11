@@ -7,3 +7,5 @@ An n-body partical simulator written in Rust
 ### Run
 
 `cargo run`
+
+![Sample](images/readme.png?raw=true "Sample")
